@@ -1,17 +1,13 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { PrismaService } from "./prisma/prisma.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateTaskDto } from "./dto/create-task.dto";
+import { UpdateTaskDto } from "./dto/update-task.dto";
 
-
-export interface CreateTaskDto {
-    title: string; 
-    description?: string
-}
-
-export interface UpdateTaskDto {
-    title? : string;
-    description?: string;
-    completed? : boolean
-}
+/**
+ * TasksService - The "Workers" or "Business Logic Layer"
+ * This is where all the actual work happens (CRUD operations, validations, etc.)
+ * Think of this as the chef in a restaurant - doing the actual cooking
+ */
 
 @Injectable()
 export class TasksService {
