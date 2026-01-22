@@ -1,16 +1,18 @@
 # TaskManager
 
-A simple task manager API built with NestJS. This repo currently contains a backend service with in-memory data storage for learning and iteration.
+A simple task manager API built with NestJS and Prisma. This repo currently contains a backend service backed by a local SQLite database for learning and iteration.
 
 ## Overview
 
 - REST API for basic task CRUD
-- In-memory task list (resets on server restart)
+- Prisma ORM with SQLite persistence
 - NestJS + TypeScript
 
 ## Project Structure
 
 - `task-manager-backend/` - NestJS API
+- `task-manager-backend/prisma/` - Prisma schema and migrations
+- `task-manager-backend/dev.db` - local SQLite database (created by Prisma)
 
 ## Getting Started
 
@@ -23,10 +25,12 @@ Install and run the API:
 ```bash
 cd task-manager-backend
 npm install
+npx prisma migrate dev
 npm run start:dev
 ```
 
 The server starts on `http://localhost:3000` by default.
+The database connection string lives in `task-manager-backend/.env` (default is `DATABASE_URL="file:./dev.db"`).
 
 ## API Endpoints
 
@@ -55,4 +59,4 @@ From `task-manager-backend/`:
 
 ## Notes
 
-This project uses in-memory data for simplicity; add a database if you want persistence.
+This project uses SQLite via Prisma for persistence; update `DATABASE_URL` in `task-manager-backend/.env` if you want a different database.
