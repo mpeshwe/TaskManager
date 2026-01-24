@@ -1,0 +1,196 @@
+### ================================================
+### Task Manager API - REST Client Test File
+### ================================================
+### Install "REST Client" extension in VS Code to run these
+### Click "Send Request" above each request to execute
+
+@baseUrl = http://localhost:3000
+
+### ================================================
+### USERS
+### ================================================
+
+### Get all users
+GET {{baseUrl}}/users
+
+### Create a user
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+    "name": "John Doe",
+    "email": "john@example.com"
+}
+
+### Create another user
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+    "name": "Jane Smith",
+    "email": "jane@example.com"
+}
+
+### Get user by ID
+GET {{baseUrl}}/users/1
+
+### Update user by ID
+PUT {{baseUrl}}/users/1
+Content-Type: application/json
+
+{
+    "name": "John Updated",
+    "email": "john.updated@example.com"
+}
+
+### Delete user by ID
+DELETE {{baseUrl}}/users/1
+
+### ================================================
+### GROUPS
+### ================================================
+
+### Get all groups
+GET {{baseUrl}}/groups
+
+### Create a group
+POST {{baseUrl}}/groups
+Content-Type: application/json
+
+{
+    "name": "Development Team",
+    "description": "Frontend and backend developers"
+}
+
+### Create another group
+POST {{baseUrl}}/groups
+Content-Type: application/json
+
+{
+    "name": "Design Team"
+}
+
+### Get group by ID
+GET {{baseUrl}}/groups/1
+
+### Delete group by ID
+DELETE {{baseUrl}}/groups/1
+
+### ================================================
+### GROUP MEMBERS
+### ================================================
+
+### Add member to group (user 1 to group 1)
+POST {{baseUrl}}/groups/1/members
+Content-Type: application/json
+
+{
+    "userId": 1
+}
+
+### Add another member to group (user 2 to group 1)
+POST {{baseUrl}}/groups/1/members
+Content-Type: application/json
+
+{
+    "userId": 2
+}
+
+### Get all members of a group
+GET {{baseUrl}}/groups/1/members
+
+### Remove member from group
+DELETE {{baseUrl}}/groups/1/members/1
+
+### ================================================
+### TASKS (Nested under Groups)
+### ================================================
+
+### Get all tasks for a group
+GET {{baseUrl}}/groups/1/tasks
+
+### Create a task in group 1
+POST {{baseUrl}}/groups/1/tasks
+Content-Type: application/json
+
+{
+    "title": "Setup project structure",
+    "description": "Initialize the project with proper folder structure"
+}
+
+### Create another task in group 1
+POST {{baseUrl}}/groups/1/tasks
+Content-Type: application/json
+
+{
+    "title": "Write documentation"
+}
+
+### Get task by ID
+GET {{baseUrl}}/groups/1/tasks/1
+
+### Update task (partial update)
+PATCH {{baseUrl}}/groups/1/tasks/1
+Content-Type: application/json
+
+{
+    "title": "Setup project structure - Updated",
+    "description": "Updated description"
+}
+
+### Mark task as complete
+PUT {{baseUrl}}/groups/1/tasks/1
+
+### Delete task
+DELETE {{baseUrl}}/groups/1/tasks/1
+
+### ================================================
+### FULL WORKFLOW TEST
+### ================================================
+### Run these in order to test a complete flow:
+### 1. Create user -> 2. Create group -> 3. Add member
+### 4. Create task -> 5. Complete task -> 6. Cleanup
+
+### Step 1: Create test user
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+    "name": "Workflow Test User",
+    "email": "workflow@test.com"
+}
+
+### Step 2: Create test group
+POST {{baseUrl}}/groups
+Content-Type: application/json
+
+{
+    "name": "Workflow Test Group",
+    "description": "Testing the full workflow"
+}
+
+### Step 3: Add user to group (adjust IDs based on responses)
+POST {{baseUrl}}/groups/1/members
+Content-Type: application/json
+
+{
+    "userId": 1
+}
+
+### Step 4: Create task in group
+POST {{baseUrl}}/groups/1/tasks
+Content-Type: application/json
+
+{
+    "title": "Workflow Test Task",
+    "description": "This task tests the full workflow"
+}
+
+### Step 5: Mark task complete
+PUT {{baseUrl}}/groups/1/tasks/1
+
+### Step 6: Verify - Get group members
+GET {{baseUrl}}/groups/1/members
+
+### Step 7: Verify - Get group tasks
+GET {{baseUrl}}/groups/1/tasks
