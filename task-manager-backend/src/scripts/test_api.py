@@ -19,6 +19,7 @@ GREEN = "\033[92m"
 RED = "\033[91m"
 YELLOW = "\033[93m"
 BLUE = "\033[94m"
+CYAN = "\033[96m"
 RESET = "\033[0m"
 
 passed = 0
@@ -40,9 +41,13 @@ def log_fail(message, details=""):
 
 
 def log_section(title):
-    print(f"\n{BLUE}{'='*50}")
+    print(f"\n{BLUE}{'='*60}")
     print(f" {title}")
-    print(f"{'='*50}{RESET}\n")
+    print(f"{'='*60}{RESET}\n")
+
+
+def log_subsection(title):
+    print(f"\n{CYAN}--- {title} ---{RESET}\n")
 
 
 def log_info(message):
@@ -62,7 +67,7 @@ def test_create_user(name, email):
         log_pass(f"Created user: {name}")
         return response.json()
     else:
-        log_fail(f"Create user: {name}", f"Status: {response.status_code}")
+        log_fail(f"Create user: {name}", f"Status: {response.status_code}, Body: {response.text}")
         return None
 
 
@@ -89,17 +94,33 @@ def test_get_user_by_id(user_id):
         return None
 
 
-def test_update_user(user_id, name, email):
+def test_update_user(user_id, name=None, email=None):
     """Update user by ID"""
-    response = requests.put(f"{BASE_URL}/users/{user_id}", json={
-        "name": name,
-        "email": email
-    })
+    data = {}
+    if name:
+        data["name"] = name
+    if email:
+        data["email"] = email
+
+    response = requests.put(f"{BASE_URL}/users/{user_id}", json=data)
     if response.status_code == 200:
-        log_pass(f"Updated user {user_id}: {name}")
+        log_pass(f"Updated user {user_id}")
         return response.json()
     else:
         log_fail(f"Update user {user_id}", f"Status: {response.status_code}")
+        return None
+
+
+def test_get_user_groups(user_id):
+    """Get groups that a user belongs to"""
+    response = requests.get(f"{BASE_URL}/users/{user_id}/groups")
+    if response.status_code == 200:
+        result = response.json()
+        groups = result.get("groups", []) if result else []
+        log_pass(f"Get user {user_id} groups (found {len(groups)})")
+        return result
+    else:
+        log_fail(f"Get user {user_id} groups", f"Status: {response.status_code}")
         return None
 
 
@@ -108,10 +129,10 @@ def test_delete_user(user_id):
     response = requests.delete(f"{BASE_URL}/users/{user_id}")
     if response.status_code == 200:
         log_pass(f"Deleted user: {user_id}")
-        return True
+        return response.json()
     else:
         log_fail(f"Delete user: {user_id}", f"Status: {response.status_code}")
-        return False
+        return None
 
 
 def test_get_user_not_found(user_id):
@@ -123,6 +144,12 @@ def test_get_user_not_found(user_id):
     else:
         log_fail(f"User not found should return 404", f"Got: {response.status_code}")
         return False
+
+
+def test_user_exists(user_id):
+    """Check if user exists (returns True/False, no logging)"""
+    response = requests.get(f"{BASE_URL}/users/{user_id}")
+    return response.status_code == 200
 
 
 # ============================================
@@ -186,6 +213,12 @@ def test_get_group_not_found(group_id):
     else:
         log_fail(f"Group not found should return 404", f"Got: {response.status_code}")
         return False
+
+
+def test_group_exists(group_id):
+    """Check if group exists (returns True/False, no logging)"""
+    response = requests.get(f"{BASE_URL}/groups/{group_id}")
+    return response.status_code == 200
 
 
 # ============================================
@@ -268,13 +301,15 @@ def test_get_task_by_id(group_id, task_id):
         return None
 
 
-def test_update_task(group_id, task_id, title=None, description=None):
+def test_update_task(group_id, task_id, title=None, description=None, completed=None):
     """Partial update task"""
     data = {}
-    if title:
+    if title is not None:
         data["title"] = title
-    if description:
+    if description is not None:
         data["description"] = description
+    if completed is not None:
+        data["completed"] = completed
 
     response = requests.patch(f"{BASE_URL}/groups/{group_id}/tasks/{task_id}", json=data)
     if response.status_code == 200:
@@ -286,14 +321,14 @@ def test_update_task(group_id, task_id, title=None, description=None):
 
 
 def test_complete_task(group_id, task_id):
-    """Mark task as complete"""
-    response = requests.put(f"{BASE_URL}/groups/{group_id}/tasks/{task_id}")
+    """Mark task as complete using PATCH /complete endpoint"""
+    response = requests.patch(f"{BASE_URL}/groups/{group_id}/tasks/{task_id}/complete")
     if response.status_code == 200:
         log_pass(f"Marked task {task_id} as complete")
-        return True
+        return response.json()
     else:
         log_fail(f"Complete task {task_id}", f"Status: {response.status_code}")
-        return False
+        return None
 
 
 def test_delete_task(group_id, task_id):
@@ -318,14 +353,20 @@ def test_get_task_not_found(group_id, task_id):
         return False
 
 
+def test_task_exists(group_id, task_id):
+    """Check if task exists (returns True/False, no logging)"""
+    response = requests.get(f"{BASE_URL}/groups/{group_id}/tasks/{task_id}")
+    return response.status_code == 200
+
+
 # ============================================
 # MAIN TEST RUNNER
 # ============================================
 def run_all_tests():
-    print(f"\n{BLUE}{'#'*50}")
-    print(f"  TASK MANAGER API - AUTOMATED TESTS")
+    print(f"\n{BLUE}{'#'*60}")
+    print(f"  TASK MANAGER API - COMPREHENSIVE TEST SUITE")
     print(f"  Server: {BASE_URL}")
-    print(f"{'#'*50}{RESET}")
+    print(f"{'#'*60}{RESET}")
 
     # Check if server is running
     try:
@@ -335,23 +376,26 @@ def run_all_tests():
         print(f"Make sure the server is running with: npm run start:dev{RESET}\n")
         sys.exit(1)
 
-    # ========== USERS ==========
-    log_section("USERS")
+    # ========== USERS CRUD ==========
+    log_section("1. USERS - CRUD Operations")
 
     user1 = test_create_user("Alice Johnson", f"alice_{TEST_RUN_ID}@example.com")
     user2 = test_create_user("Bob Smith", f"bob_{TEST_RUN_ID}@example.com")
+    user3 = test_create_user("Charlie Brown", f"charlie_{TEST_RUN_ID}@example.com")
 
     test_get_all_users()
 
     if user1:
         test_get_user_by_id(user1["id"])
-        test_update_user(user1["id"], "Alice Updated", f"alice.updated_{TEST_RUN_ID}@example.com")
+        test_update_user(user1["id"], name="Alice Updated")
+        test_update_user(user1["id"], email=f"alice.new_{TEST_RUN_ID}@example.com")
 
-    # ========== GROUPS ==========
-    log_section("GROUPS")
+    # ========== GROUPS CRUD ==========
+    log_section("2. GROUPS - CRUD Operations")
 
     group1 = test_create_group("Development Team", "Frontend and backend developers")
     group2 = test_create_group("Design Team")
+    group3 = test_create_group("Solo Group", "Group with only one member")
 
     test_get_all_groups()
 
@@ -359,72 +403,208 @@ def run_all_tests():
         test_get_group_by_id(group1["id"])
 
     # ========== MEMBERS ==========
-    log_section("MEMBERS")
+    log_section("3. MEMBERS - Add/Remove Members")
 
     if group1 and user1 and user2:
         test_add_member(group1["id"], user1["id"])
         test_add_member(group1["id"], user2["id"])
         test_get_members(group1["id"])
+
+    if group2 and user2:
+        test_add_member(group2["id"], user2["id"])
+
+    if group3 and user3:
+        test_add_member(group3["id"], user3["id"])
+
+    log_subsection("Get User's Groups")
+    if user2:
+        test_get_user_groups(user2["id"])
+
+    log_subsection("Remove Member")
+    if group1 and user2:
         test_delete_member(group1["id"], user2["id"])
         test_get_members(group1["id"])
 
-    # ========== TASKS ==========
-    log_section("TASKS")
+    # ========== TASKS CRUD ==========
+    log_section("4. TASKS - CRUD Operations")
 
+    task1 = task2 = task3 = None
     if group1:
         task1 = test_create_task(group1["id"], "Setup project", "Initialize repository")
-        task2 = test_create_task(group1["id"], "Write tests")
+        task2 = test_create_task(group1["id"], "Write tests", "Add unit tests")
+        task3 = test_create_task(group1["id"], "Deploy app")
 
         test_get_tasks_by_group(group1["id"])
 
         if task1:
             test_get_task_by_id(group1["id"], task1["id"])
-            test_update_task(group1["id"], task1["id"], title="Setup project - Updated")
-            test_complete_task(group1["id"], task1["id"])
 
-            # Verify completion
-            updated_task = test_get_task_by_id(group1["id"], task1["id"])
-            if updated_task and updated_task.get("completed"):
-                log_pass("Task completion verified")
-            else:
-                log_fail("Task completion verification")
+    log_subsection("Update Task Fields")
+    if group1 and task1:
+        test_update_task(group1["id"], task1["id"], title="Setup project - UPDATED")
+        test_update_task(group1["id"], task1["id"], description="New description")
 
-        if task2:
-            test_delete_task(group1["id"], task2["id"])
+    log_subsection("Complete Task via PATCH /complete")
+    if group1 and task1:
+        result = test_complete_task(group1["id"], task1["id"])
+        if result and result.get("completed") == True:
+            log_pass("Task completion verified (completed=true)")
+        else:
+            log_fail("Task completion verification", f"Expected completed=true, got: {result}")
+
+    log_subsection("Complete Task via PATCH with completed field")
+    if group1 and task2:
+        result = test_update_task(group1["id"], task2["id"], completed=True)
+        if result and result.get("completed") == True:
+            log_pass("Task completed via PATCH body (completed=true)")
+        else:
+            log_fail("Task completion via PATCH body", f"Expected completed=true, got: {result}")
+
+    log_subsection("Delete Task")
+    if group1 and task3:
+        test_delete_task(group1["id"], task3["id"])
+        test_get_task_not_found(group1["id"], task3["id"])
 
     # ========== 404 TESTS ==========
-    log_section("404 ERROR HANDLING")
+    log_section("5. ERROR HANDLING - 404 Not Found")
 
     test_get_user_not_found(99999)
     test_get_group_not_found(99999)
     if group1:
         test_get_task_not_found(group1["id"], 99999)
 
-    # ========== CLEANUP ==========
-    log_section("CLEANUP")
-    log_info("Cleaning up test data...")
+    # ========== CASCADE DELETE: Group -> Tasks ==========
+    log_section("6. CASCADE DELETE - Group Deletion")
+    log_info("Deleting a group should delete all its tasks")
 
-    # Delete groups (cascades to tasks and members)
+    cascade_group = test_create_group("Cascade Test Group")
+    cascade_task1 = cascade_task2 = None
+    if cascade_group:
+        cascade_task1 = test_create_task(cascade_group["id"], "Cascade Task 1")
+        cascade_task2 = test_create_task(cascade_group["id"], "Cascade Task 2")
+
+        log_info(f"Created group {cascade_group['id']} with tasks {cascade_task1['id']}, {cascade_task2['id']}")
+
+        # Delete group
+        test_delete_group(cascade_group["id"])
+
+        # Verify group is gone
+        if not test_group_exists(cascade_group["id"]):
+            log_pass("Group deleted successfully")
+        else:
+            log_fail("Group should be deleted")
+
+        # Verify tasks are gone (cascade)
+        # Note: We can't check tasks directly since group is gone,
+        # but if we had a global task endpoint we could verify
+
+    # ========== CASCADE DELETE: User -> Empty Groups ==========
+    log_section("7. CASCADE DELETE - User Deletion (Empty Groups)")
+    log_info("Deleting a user should remove them from groups")
+    log_info("If a group becomes empty, it should be deleted along with its tasks")
+
+    # Create isolated test data
+    cascade_user = test_create_user("Cascade User", f"cascade_{TEST_RUN_ID}@example.com")
+    cascade_group2 = test_create_group("User Cascade Group")
+    cascade_task3 = None
+
+    if cascade_user and cascade_group2:
+        # Add user as the ONLY member
+        test_add_member(cascade_group2["id"], cascade_user["id"])
+
+        # Create a task in this group
+        cascade_task3 = test_create_task(cascade_group2["id"], "Orphan Task")
+
+        log_info(f"User {cascade_user['id']} is the only member of group {cascade_group2['id']}")
+        log_info(f"Group has task {cascade_task3['id'] if cascade_task3 else 'N/A'}")
+
+        # Delete the user
+        log_info(f"Deleting user {cascade_user['id']}...")
+        test_delete_user(cascade_user["id"])
+
+        # Verify user is gone
+        if not test_user_exists(cascade_user["id"]):
+            log_pass("User deleted successfully")
+        else:
+            log_fail("User should have been deleted")
+
+        # Verify group is gone (was empty after user removal)
+        if not test_group_exists(cascade_group2["id"]):
+            log_pass("Empty group was automatically deleted")
+        else:
+            log_fail("Empty group should have been deleted")
+
+    # ========== USER IN MULTIPLE GROUPS ==========
+    log_section("8. CASCADE DELETE - User in Multiple Groups")
+    log_info("Deleting a user in multiple groups should only delete EMPTY groups")
+
+    multi_user = test_create_user("Multi User", f"multi_{TEST_RUN_ID}@example.com")
+    other_user = test_create_user("Other User", f"other_{TEST_RUN_ID}@example.com")
+    shared_group = test_create_group("Shared Group")
+    solo_group2 = test_create_group("Solo Group 2")
+
+    if multi_user and other_user and shared_group and solo_group2:
+        # Add multi_user to both groups
+        test_add_member(shared_group["id"], multi_user["id"])
+        test_add_member(solo_group2["id"], multi_user["id"])
+
+        # Add other_user to shared_group (so it won't be empty)
+        test_add_member(shared_group["id"], other_user["id"])
+
+        log_info(f"multi_user is in: shared_group (with other_user) and solo_group2 (alone)")
+
+        # Delete multi_user
+        log_info(f"Deleting multi_user...")
+        test_delete_user(multi_user["id"])
+
+        # shared_group should still exist (has other_user)
+        if test_group_exists(shared_group["id"]):
+            log_pass("Shared group still exists (has remaining members)")
+        else:
+            log_fail("Shared group should NOT be deleted (has remaining members)")
+
+        # solo_group2 should be deleted (was empty)
+        if not test_group_exists(solo_group2["id"]):
+            log_pass("Solo group was deleted (became empty)")
+        else:
+            log_fail("Solo group should be deleted (became empty)")
+
+        # Cleanup remaining
+        test_delete_group(shared_group["id"])
+        test_delete_user(other_user["id"])
+
+    # ========== CLEANUP ==========
+    log_section("9. CLEANUP")
+    log_info("Cleaning up remaining test data...")
+
+    # Delete groups first (cascades to tasks)
     if group1:
         test_delete_group(group1["id"])
     if group2:
         test_delete_group(group2["id"])
+    if group3:
+        test_delete_group(group3["id"])
 
     # Delete users
     if user1:
         test_delete_user(user1["id"])
     if user2:
         test_delete_user(user2["id"])
+    if user3:
+        test_delete_user(user3["id"])
 
     # ========== SUMMARY ==========
-    print(f"\n{BLUE}{'='*50}")
+    print(f"\n{BLUE}{'='*60}")
     print(f" TEST SUMMARY")
-    print(f"{'='*50}{RESET}")
+    print(f"{'='*60}{RESET}")
     print(f"{GREEN}Passed: {passed}{RESET}")
     print(f"{RED}Failed: {failed}{RESET}")
-    print(f"Total:  {passed + failed}\n")
+    print(f"Total:  {passed + failed}")
 
-    if failed > 0:
+    if failed == 0:
+        print(f"\n{GREEN}All tests passed!{RESET}\n")
+    else:
+        print(f"\n{RED}Some tests failed. Review output above.{RESET}\n")
         sys.exit(1)
 
 
